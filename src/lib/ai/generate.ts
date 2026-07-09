@@ -52,3 +52,40 @@ function extractJson(text: string): string {
   const start = text.search(/[[{]/);
   return start >= 0 ? text.slice(start).trim() : text.trim();
 }
+
+/**
+ * Variante com arquivo (PDF/imagem) — usada no OCR de provas digitalizadas (M7).
+ * O arquivo entra como bloco `document`/`image` na mensagem (vision).
+ */
+export async function generateStructuredFromFile<T>(
+  opts: GenerateOptions<T> & { file: { data: Buffer; mimeType: string } },
+): Promise<T> {
+  const { system, prompt, schema, model = "heavy", maxTokens = 4096, file } = opts;
+
+  const base64 = file.data.toString("base64");
+  const fileBlock: Anthropic.ContentBlockParam =
+    file.mimeType === "application/pdf"
+      ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } }
+      : {
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: file.mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+            data: base64,
+          },
+        };
+
+  const message = await anthropic.messages.create({
+    model: MODELS[model],
+    max_tokens: maxTokens,
+    system,
+    messages: [{ role: "user", content: [fileBlock, { type: "text", text: prompt }] }],
+  });
+
+  const text = message.content
+    .filter((block): block is Anthropic.TextBlock => block.type === "text")
+    .map((block) => block.text)
+    .join("");
+
+  return schema.parse(JSON.parse(extractJson(text)));
+}

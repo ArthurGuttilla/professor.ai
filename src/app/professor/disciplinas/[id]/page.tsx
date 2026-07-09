@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { requireDisciplineAccess } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db";
-import { Card } from "@/components/ui";
+import { can } from "@/lib/auth/permissions";
+import { toggleSocraticModeAction } from "./actions";
+import { Badge, Button, Card } from "@/components/ui";
 
 /** Visão geral: o fluxo mestre da disciplina com o status de cada etapa. */
 export default async function DisciplineOverview({
@@ -10,7 +12,7 @@ export default async function DisciplineOverview({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requireDisciplineAccess(id, "view");
+  const { discipline, role } = await requireDisciplineAccess(id, "view");
 
   const plan = await prisma.teachingPlan.findUnique({
     where: { disciplineId: id },
@@ -73,7 +75,32 @@ export default async function DisciplineOverview({
   ];
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="space-y-6">
+      {/* M9: configuração do tutor */}
+      <Card className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-medium text-gray-900">
+            9 · Tutor de IA{" "}
+            <Badge color={discipline.socraticMode ? "purple" : "gray"}>
+              {discipline.socraticMode ? "Modo socrático ativo" : "Respostas diretas"}
+            </Badge>
+          </h2>
+          <p className="mt-0.5 text-sm text-gray-500">
+            O tutor indexa apenas material publicado e correções liberadas; nunca faz a atividade
+            pelo aluno.
+          </p>
+        </div>
+        {can(role, "publish") ? (
+          <form action={toggleSocraticModeAction}>
+            <input type="hidden" name="disciplineId" value={id} />
+            <Button variant="secondary" type="submit">
+              {discipline.socraticMode ? "Desativar modo socrático" : "Ativar modo socrático"}
+            </Button>
+          </form>
+        ) : null}
+      </Card>
+
+      <div className="grid gap-3 sm:grid-cols-2">
       {steps.map((s, i) => (
         <Link key={i} href={`/professor/disciplinas/${id}/${s.href}`}>
           <Card className="flex h-full items-center justify-between transition-shadow hover:shadow-md">
@@ -85,6 +112,7 @@ export default async function DisciplineOverview({
           </Card>
         </Link>
       ))}
+      </div>
     </div>
   );
 }

@@ -259,7 +259,7 @@ export default async function ExamDetailPage({
                   <Label>Questão discursiva (ou geral)</Label>
                   <Select name="questionId" className="w-full">
                     <option value="">Critério geral</option>
-                    {essayQuestions.map((eq, i) => (
+                    {essayQuestions.map((eq) => (
                       <option key={eq.questionId} value={eq.questionId}>
                         Q{exam.questions.indexOf(eq) + 1} — discursiva
                       </option>

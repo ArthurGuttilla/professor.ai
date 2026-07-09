@@ -1,9 +1,7 @@
-// professor.ai — esboço do modelo de dados.
-// Acompanha docs/data-model.md. Implementa um subconjunto suficiente para
-// ancorar a Fase 1 (M1-M4, M10). Entidades de Fase 2/3 estão esboçadas ao final.
-//
-// Convenção multi-tenant: toda entidade de negócio referencia institutionId.
-// Ver docs/adr/0002-multitenancy-and-rbac.md.
+// professor.ai — modelo de dados completo (M1–M10).
+// Acompanha docs/data-model.md. Convenção multi-tenant: toda entidade de
+// negócio referencia institutionId direta ou transitivamente (via Discipline).
+// Ver docs/adr/0002-multitenancy-and-rbac.md e 0003-ai-human-in-the-loop.md.
 
 generator client {
   provider = "prisma-client-js"
@@ -40,15 +38,75 @@ enum BibKind {
   COMPLEMENTARY
 }
 
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
+enum TemplateKind {
+  SLIDES
+  TEACHING_PLAN
+  EXAM
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  ESSAY
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum QuestionSource {
+  MANUAL
+  AI
+  IMPORTED
+}
+
+enum ActivityKind {
+  QUIZ_LIVE
+  QUIZ_ASYNC
+  ACTIVITY
+}
+
+enum AssessmentKind {
+  ENADE_EXAM
+  TRADITIONAL_EXAM
+  GRADED_ACTIVITY
+}
+
+// Fila de correção (M7): pendente vínculo → corrigida (IA) → validada → liberada.
+enum SubmissionStatus {
+  PENDING_LINK
+  LINKED
+  AI_GRADED
+  VALIDATED
+  RELEASED
+}
+
+enum LinkState {
+  UNLINKED
+  SUGGESTED
+  CONFIRMED
+}
+
 // ─── Tenancy & pessoas ───────────────────────────────────────────
 
 model Institution {
-  id          String       @id @default(cuid())
+  id          String                 @id @default(cuid())
   name        String
-  createdAt   DateTime     @default(now())
+  createdAt   DateTime               @default(now())
   users       User[]
   disciplines Discipline[]
   students    Student[]
+  templates   InstitutionTemplate[]
+  invites     Invite[]
+  auditEvents AuditEvent[]
 }
 
 model User {
@@ -57,26 +115,55 @@ model User {
   institution   Institution  @relation(fields: [institutionId], references: [id])
   email         String
   name          String?
+  passwordHash  String
   isAdmin       Boolean      @default(false)
   createdAt     DateTime     @default(now())
   memberships   Membership[]
+  sessions      Session[]
+  sentInvites   Invite[]     @relation("InviteSender")
 
   @@unique([institutionId, email])
+  @@index([email])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 // Aluno: autenticação leve por e-mail institucional (M8), separado de User.
 model Student {
-  id            String       @id @default(cuid())
-  institutionId String
-  institution   Institution  @relation(fields: [institutionId], references: [id])
-  email         String
-  name          String?
-  enrollments   Enrollment[]
+  id             String            @id @default(cuid())
+  institutionId  String
+  institution    Institution       @relation(fields: [institutionId], references: [id])
+  email          String
+  name           String?
+  registration   String? // matrícula
+  enrollments    Enrollment[]
+  sessions       StudentSession[]
+  attempts       ActivityAttempt[]
+  submissions    Submission[]      @relation("SubmissionStudent")
+  suggestedFor   Submission[]      @relation("SubmissionSuggested")
+  conversations  TutorConversation[]
 
   @@unique([institutionId, email])
+  @@index([email])
 }
 
-// ─── Disciplina & vínculos ───────────────────────────────────────
+model StudentSession {
+  id        String   @id @default(cuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// ─── M10: Disciplina, vínculos, convites, templates ──────────────
 
 model Discipline {
   id            String        @id @default(cuid())
@@ -86,20 +173,28 @@ model Discipline {
   course        String
   term          String // período/semestre, ex.: "2026.2"
   workloadHours Int
+  // M9: modo socrático do tutor, configurável pelo professor.
+  socraticMode  Boolean       @default(false)
   createdAt     DateTime      @default(now())
-  memberships   Membership[]
-  enrollments   Enrollment[]
-  teachingPlan  TeachingPlan?
+
+  memberships  Membership[]
+  enrollments  Enrollment[]
+  invites      Invite[]
+  teachingPlan TeachingPlan?
+  questions    Question[]
+  activities   Activity[]
+  exams        Exam[]
+  conversations TutorConversation[]
 
   @@index([institutionId])
 }
 
 // Papel escopado por disciplina. Limite hard ≤2 PROFESSOR e ≤2 ASSISTANT
-// é validado na camada de serviço no convite (não expressável em schema puro).
+// validado na camada de serviço (convite e aceite).
 model Membership {
   id           String     @id @default(cuid())
   disciplineId String
-  discipline   Discipline @relation(fields: [disciplineId], references: [id])
+  discipline   Discipline @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
   userId       String
   user         User       @relation(fields: [userId], references: [id])
   role         Role // PROFESSOR | ASSISTANT
@@ -112,52 +207,120 @@ model Membership {
 model Enrollment {
   id           String     @id @default(cuid())
   disciplineId String
-  discipline   Discipline @relation(fields: [disciplineId], references: [id])
+  discipline   Discipline @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
   studentId    String
   student      Student    @relation(fields: [studentId], references: [id])
+  createdAt    DateTime   @default(now())
 
   @@unique([disciplineId, studentId])
+}
+
+// Convite por e-mail com aceite; professor sem conta cria no fluxo do convite.
+model Invite {
+  id            String       @id @default(cuid())
+  institutionId String
+  institution   Institution  @relation(fields: [institutionId], references: [id])
+  disciplineId  String
+  discipline    Discipline   @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
+  email         String
+  role          Role // PROFESSOR | ASSISTANT
+  token         String       @unique
+  status        InviteStatus @default(PENDING)
+  invitedById   String
+  invitedBy     User         @relation("InviteSender", fields: [invitedById], references: [id])
+  createdAt     DateTime     @default(now())
+  acceptedAt    DateTime?
+
+  @@index([disciplineId, role, status])
+}
+
+// Template institucional: slides (logo, paleta, fontes) e documentos.
+model InstitutionTemplate {
+  id            String       @id @default(cuid())
+  institutionId String
+  institution   Institution  @relation(fields: [institutionId], references: [id])
+  kind          TemplateKind
+  name          String
+  // Config visual: { logoUrl, primaryColor, secondaryColor, fontFamily, coverText, closingText }
+  config        Json?
+  fileUrl       String?
+  createdAt     DateTime     @default(now())
+}
+
+// Trilha de auditoria (M7 e ações sensíveis): o que a IA sugeriu vs. aprovado.
+model AuditEvent {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  actorType     String // "USER" | "STUDENT" | "SYSTEM"
+  actorId       String?
+  action        String // ex.: "submission.validate", "feedback.release"
+  entity        String
+  entityId      String
+  data          Json?
+  createdAt     DateTime    @default(now())
+
+  @@index([institutionId, entity, entityId])
 }
 
 // ─── M1: Plano de Ensino (fonte de verdade, versionado) ──────────
 
 model TeachingPlan {
-  id           String  @id @default(cuid())
-  disciplineId String  @unique
-  discipline   Discipline @relation(fields: [disciplineId], references: [id])
-  version      Int     @default(1)
+  id           String     @id @default(cuid())
+  disciplineId String     @unique
+  discipline   Discipline @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
+  version      Int        @default(1)
 
   // Campos MEC (ver PRD M1). Texto rico serializado como markdown.
-  ementa            String @default("")
-  objetivosGerais   String @default("")
-  metodologia       String @default("")
+  ementa             String @default("")
+  objetivosGerais    String @default("")
+  metodologia        String @default("")
   criteriosAvaliacao String @default("")
 
   programUnits       ProgramUnit[]
   learningObjectives LearningObjective[]
   bibliography       BibliographyItem[]
   lessonPlan         LessonPlan?
+  versions           TeachingPlanVersion[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+// Snapshot imutável a cada salvamento relevante (histórico de edições).
+model TeachingPlanVersion {
+  id             String       @id @default(cuid())
+  teachingPlanId String
+  teachingPlan   TeachingPlan @relation(fields: [teachingPlanId], references: [id], onDelete: Cascade)
+  version        Int
+  snapshot       Json // plano completo serializado
+  authorId       String?
+  note           String?
+  createdAt      DateTime     @default(now())
+
+  @@unique([teachingPlanId, version])
+}
+
 model ProgramUnit {
   id             String       @id @default(cuid())
   teachingPlanId String
-  teachingPlan   TeachingPlan @relation(fields: [teachingPlanId], references: [id])
+  teachingPlan   TeachingPlan @relation(fields: [teachingPlanId], references: [id], onDelete: Cascade)
   order          Int
   title          String
   content        String       @default("") // conteúdo programático da unidade
+
+  bibliographyLinks BibliographyUnitLink[]
+  lessonLinks       LessonUnit[]
 }
 
 model LearningObjective {
   id             String       @id @default(cuid())
   teachingPlanId String
-  teachingPlan   TeachingPlan @relation(fields: [teachingPlanId], references: [id])
+  teachingPlan   TeachingPlan @relation(fields: [teachingPlanId], references: [id], onDelete: Cascade)
   bloomLevel     String // taxonomia de Bloom
   description    String
   isSpecific     Boolean      @default(true) // false = objetivo geral
+  order          Int          @default(0)
 }
 
 // ─── M2: Bibliografia (anti-alucinação: verificável) ─────────────
@@ -165,19 +328,33 @@ model LearningObjective {
 model BibliographyItem {
   id             String       @id @default(cuid())
   teachingPlanId String
-  teachingPlan   TeachingPlan @relation(fields: [teachingPlanId], references: [id])
+  teachingPlan   TeachingPlan @relation(fields: [teachingPlanId], references: [id], onDelete: Cascade)
   kind           BibKind
-  // Formatação ABNT derivada dos campos abaixo.
   authors        String
   title          String
   publisher      String?
   year           Int?
+  edition        String?
   isbn           String?
-  abntFormatted  String?
+  abntFormatted  String? // derivado; regenerado ao salvar
   // Proveniência da verificação de existência (obrigatória p/ sugestão de IA).
   verified       Boolean      @default(false)
   provenance     String?
+  availableInLibrary Boolean  @default(false)
   order          Int          @default(0)
+
+  unitLinks BibliographyUnitLink[]
+}
+
+// Vínculo N:N referência ↔ unidade do programa (usado no aula a aula e slides).
+model BibliographyUnitLink {
+  id                 String           @id @default(cuid())
+  bibliographyItemId String
+  bibliographyItem   BibliographyItem @relation(fields: [bibliographyItemId], references: [id], onDelete: Cascade)
+  programUnitId      String
+  programUnit        ProgramUnit      @relation(fields: [programUnitId], references: [id], onDelete: Cascade)
+
+  @@unique([bibliographyItemId, programUnitId])
 }
 
 // ─── M3: Plano aula a aula ───────────────────────────────────────
@@ -185,69 +362,341 @@ model BibliographyItem {
 model LessonPlan {
   id             String       @id @default(cuid())
   teachingPlanId String       @unique
-  teachingPlan   TeachingPlan @relation(fields: [teachingPlanId], references: [id])
+  teachingPlan   TeachingPlan @relation(fields: [teachingPlanId], references: [id], onDelete: Cascade)
   startDate      DateTime?
   endDate        DateTime?
+  // Dias da semana com aula (0=dom..6=sáb) e feriados/datas bloqueadas.
+  weekdays       Int[]
+  holidays       DateTime[]
   lessons        Lesson[]
 }
 
 model Lesson {
-  id           String       @id @default(cuid())
+  id           String     @id @default(cuid())
   lessonPlanId String
-  lessonPlan   LessonPlan   @relation(fields: [lessonPlanId], references: [id])
+  lessonPlan   LessonPlan @relation(fields: [lessonPlanId], references: [id], onDelete: Cascade)
   number       Int
   date         DateTime?
   theme        String
-  objectives   String       @default("")
-  isAssessment Boolean      @default(false) // aula reservada p/ avaliação
+  objectives   String     @default("")
+  isAssessment Boolean    @default(false) // aula reservada p/ avaliação
+  // QR code por aula: slug público da página da aula (materiais publicados).
+  qrSlug       String?    @unique
 
+  unitLinks LessonUnit[]
   content   LessonContent?
   slideDeck SlideDeck?
   materials Material[]
+  activities Activity[]
 
   @@unique([lessonPlanId, number])
+}
+
+// Unidades do programa cobertas pela aula.
+model LessonUnit {
+  id            String      @id @default(cuid())
+  lessonId      String
+  lesson        Lesson      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  programUnitId String
+  programUnit   ProgramUnit @relation(fields: [programUnitId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, programUnitId])
 }
 
 // ─── M4: Conteúdo, slides e materiais por aula ───────────────────
 
 model LessonContent {
-  id       String       @id @default(cuid())
-  lessonId String       @unique
-  lesson   Lesson       @relation(fields: [lessonId], references: [id])
-  markdown String       @default("")
-  status   PublishState @default(DRAFT)
+  id                  String       @id @default(cuid())
+  lessonId            String       @unique
+  lesson              Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  markdown            String       @default("")
+  // Atividades propostas geradas junto com o conteúdo (lista em markdown).
+  proposedActivities  String       @default("")
+  status              PublishState @default(DRAFT)
+  qrSlug              String?      @unique
+  updatedAt           DateTime     @updatedAt
 }
 
 model SlideDeck {
   id       String       @id @default(cuid())
   lessonId String       @unique
-  lesson   Lesson       @relation(fields: [lessonId], references: [id])
-  // Estrutura dos slides serializada (JSON) ou referência ao arquivo publicado.
+  lesson   Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  // Slides: [{ title, bullets: string[], notes? }] — renderizados no viewer
+  // com o template institucional. Último slide = bibliografia da aula.
   data     Json?
   status   PublishState @default(DRAFT)
+  qrSlug   String?      @unique
+  updatedAt DateTime    @updatedAt
 }
 
 model Material {
-  id        String       @id @default(cuid())
-  lessonId  String
-  lesson    Lesson       @relation(fields: [lessonId], references: [id])
-  name      String
-  // URL do arquivo no storage (PDF/PPTX/imagem). Alimenta IA/tutor.
-  fileUrl   String?
-  status    PublishState @default(DRAFT)
-  // QR code único por material aponta para a versão publicada.
-  qrSlug    String?      @unique
-  createdAt DateTime     @default(now())
+  id            String       @id @default(cuid())
+  lessonId      String
+  lesson        Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  name          String
+  fileUrl       String? // caminho no storage (PDF/PPTX/imagem)
+  mimeType      String?
+  sizeBytes     Int?
+  // Texto extraído do arquivo — alimenta IA (atividades, provas, tutor).
+  extractedText String?
+  status        PublishState @default(DRAFT)
+  qrSlug        String?      @unique
+  createdAt     DateTime     @default(now())
 }
 
-// ─── Fase 2/3 (esboço — a detalhar quando implementar) ───────────
-//
-// model Exam { ... escopo disciplina|unidades; kind ENADE/tradicional/atividade }
-// model Rubric { ... }            // critério, descrição, pontos (obrigatória)
-// model RubricCriterion { ... }
-// model Question { ... }          // MC / V-F / dissertativa; QuestionBank
-// model Activity { ... }          // quiz gamificado | assíncrono
-// model Submission { ... }        // scan↔aluno; LinkState UNLINKED/SUGGESTED/CONFIRMED
-// model CriterionScore { ... }    // aiScore vs finalScore (trilha de auditoria)
-// model Feedback { ... }          // ReviewState; visível ao aluno só em RELEASED
-// model TutorIndexItem { ... }    // só material publicado/liberado; proveniência
+// ─── M5/M6: Banco de questões ────────────────────────────────────
+
+model Question {
+  id           String         @id @default(cuid())
+  disciplineId String
+  discipline   Discipline     @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
+  type         QuestionType
+  difficulty   Difficulty     @default(MEDIUM)
+  source       QuestionSource @default(MANUAL)
+  // Formato ENADE: texto-base / situação-problema antes do enunciado.
+  baseText     String?
+  statement    String
+  // MC/V-F: [{ key: "A", text }]; correctKey aponta a correta.
+  options      Json?
+  correctKey   String?
+  // Dissertativa: padrão de resposta esperado.
+  answerKey    String?
+  // Tags: unidade/tema/aula (ids e texto livre).
+  unitId       String?
+  theme        String?
+  lessonId     String?
+  // Geração por IA exige revisão do professor antes de uso publicado.
+  reviewedAt   DateTime?
+  createdAt    DateTime       @default(now())
+
+  activityLinks ActivityQuestion[]
+  examLinks     ExamQuestion[]
+
+  @@index([disciplineId, type])
+}
+
+// ─── M5: Atividades e gamificação ────────────────────────────────
+
+model Activity {
+  id           String       @id @default(cuid())
+  disciplineId String
+  discipline   Discipline   @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
+  lessonId     String?
+  lesson       Lesson?      @relation(fields: [lessonId], references: [id])
+  kind         ActivityKind
+  title        String
+  status       PublishState @default(DRAFT)
+  // Assíncrono: início e entrega obrigatórios; tentativas configuráveis.
+  startsAt     DateTime?
+  dueAt        DateTime?
+  maxAttempts  Int          @default(1)
+  // Ao vivo: tempo por questão e código da sala.
+  timePerQuestionSec Int    @default(30)
+  joinCode     String?      @unique
+  createdAt    DateTime     @default(now())
+
+  questions ActivityQuestion[]
+  attempts  ActivityAttempt[]
+}
+
+model ActivityQuestion {
+  id         String   @id @default(cuid())
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id])
+  order      Int
+  points     Float    @default(1)
+
+  @@unique([activityId, questionId])
+}
+
+model ActivityAttempt {
+  id            String    @id @default(cuid())
+  activityId    String
+  activity      Activity  @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  studentId     String
+  student       Student   @relation(fields: [studentId], references: [id])
+  attemptNumber Int
+  startedAt     DateTime  @default(now())
+  submittedAt   DateTime?
+  // Pontuação total (objetivas corrigidas automaticamente + velocidade no ao vivo).
+  score         Float     @default(0)
+  answers       AttemptAnswer[]
+
+  @@unique([activityId, studentId, attemptNumber])
+}
+
+model AttemptAnswer {
+  id         String          @id @default(cuid())
+  attemptId  String
+  attempt    ActivityAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String
+  answer     String // key da alternativa ou texto dissertativo
+  isCorrect  Boolean?
+  points     Float           @default(0)
+  responseMs Int? // p/ pontuação por velocidade no quiz ao vivo
+
+  @@unique([attemptId, questionId])
+}
+
+// ─── M6: Provas e rubricas ───────────────────────────────────────
+
+model Exam {
+  id           String         @id @default(cuid())
+  disciplineId String
+  discipline   Discipline     @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
+  kind         AssessmentKind
+  title        String
+  // Escopo: null = disciplina inteira; senão lista de unitIds/lessonIds.
+  scope        Json?
+  status       PublishState   @default(DRAFT)
+  totalPoints  Float          @default(10)
+  appliedAt    DateTime?
+  createdAt    DateTime       @default(now())
+
+  questions   ExamQuestion[]
+  rubric      Rubric?
+  submissions Submission[]
+}
+
+model ExamQuestion {
+  id         String   @id @default(cuid())
+  examId     String
+  exam       Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id])
+  order      Int
+  points     Float    @default(1)
+
+  @@unique([examId, questionId])
+}
+
+// Rubrica obrigatória por prova/atividade avaliativa (validada no publish).
+model Rubric {
+  id     String @id @default(cuid())
+  examId String @unique
+  exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  criteria RubricCriterion[]
+}
+
+model RubricCriterion {
+  id          String  @id @default(cuid())
+  rubricId    String
+  rubric      Rubric  @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+  // Rubrica por questão discursiva (questionId) ou geral (null).
+  questionId  String?
+  criterion   String
+  description String  @default("")
+  points      Float
+  order       Int     @default(0)
+
+  scores CriterionScore[]
+}
+
+// ─── M7: Correção (gate humano-no-loop) ──────────────────────────
+
+model Submission {
+  id     String @id @default(cuid())
+  examId String
+  exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  // Vínculo prova↔aluno: sugerido por IA (OCR do cabeçalho) + confirmação humana.
+  linkState          LinkState @default(UNLINKED)
+  studentId          String?
+  student            Student?  @relation("SubmissionStudent", fields: [studentId], references: [id])
+  suggestedStudentId String?
+  suggestedStudent   Student?  @relation("SubmissionSuggested", fields: [suggestedStudentId], references: [id])
+  ocrHeader          String? // identificação extraída do cabeçalho
+
+  fileUrl  String?
+  mimeType String?
+  ocrText  String? // transcrição das respostas
+
+  status  SubmissionStatus @default(PENDING_LINK)
+  // Agregados: nota sugerida pela IA vs. nota final validada (auditoria).
+  aiTotal    Float?
+  finalTotal Float?
+
+  // Acesso do aluno à correção via link único + QR (M8).
+  accessToken String @unique @default(cuid())
+
+  validatedById String?
+  validatedAt   DateTime?
+  releasedAt    DateTime?
+  createdAt     DateTime  @default(now())
+
+  answers         SubmissionAnswer[]
+  criterionScores CriterionScore[]
+  feedback        Feedback?
+
+  @@index([examId, status])
+}
+
+// Resposta extraída/dada por questão (objetivas: correção instantânea).
+model SubmissionAnswer {
+  id           String     @id @default(cuid())
+  submissionId String
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  questionId   String
+  answer       String     @default("")
+  isCorrect    Boolean?
+  aiPoints     Float?
+  finalPoints  Float?
+  aiFeedback   String?
+  finalFeedback String?
+
+  @@unique([submissionId, questionId])
+}
+
+// Nota por critério da rubrica: aiScore (sugerida) vs finalScore (validada).
+model CriterionScore {
+  id           String          @id @default(cuid())
+  submissionId String
+  submission   Submission      @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  criterionId  String
+  criterion    RubricCriterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  aiScore      Float?
+  aiJustification String?
+  finalScore   Float?
+  finalJustification String?
+
+  @@unique([submissionId, criterionId])
+}
+
+// Feedback textual ao aluno — visível somente em RELEASED (gate inegociável).
+model Feedback {
+  id           String      @id @default(cuid())
+  submissionId String      @unique
+  submission   Submission  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  aiText       String?
+  finalText    String?
+  reviewState  ReviewState @default(PENDING_REVIEW)
+  updatedAt    DateTime    @updatedAt
+}
+
+// ─── M9: Tutor de IA ─────────────────────────────────────────────
+
+model TutorConversation {
+  id           String     @id @default(cuid())
+  disciplineId String
+  discipline   Discipline @relation(fields: [disciplineId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      Student    @relation(fields: [studentId], references: [id])
+  createdAt    DateTime   @default(now())
+  messages     TutorMessage[]
+
+  @@index([disciplineId, studentId])
+}
+
+model TutorMessage {
+  id             String            @id @default(cuid())
+  conversationId String
+  conversation   TutorConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String // "student" | "tutor"
+  content        String
+  // Citações de fonte: [{ label: "Aula 3 — slides", type, id }]
+  citations      Json?
+  createdAt      DateTime          @default(now())
+}

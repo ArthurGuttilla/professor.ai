@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo · Quiz ao vivo — professor.ai</title>
+  <link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body>
+  <div class="demo-banner">
+    🎮 Demo jogável no navegador — no produto real, a sala roda em tempo real (SSE) com a turma toda e ranking projetado.
+  </div>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="logo" href="../index.html">professor.ai</a>
+      <nav class="topnav">
+        <a href="./index.html">Visão geral</a>
+        <a href="./plano.html">Plano de ensino</a>
+        <a href="./aulas.html">Aula a aula</a>
+        <a href="./correcao.html">Correção</a>
+        <a href="./aluno.html">Aluno</a>
+        <a class="active" href="./quiz.html">Quiz ao vivo</a>
+        <a href="./tutor.html">Tutor</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container page">
+    <div class="quiz-wrap">
+      <div id="lobby">
+        <h1 class="page-title" style="text-align:center">Sala <span style="color:var(--brand);letter-spacing:0.2em">DEMO01</span></h1>
+        <p class="page-sub" style="text-align:center">Quiz — Aula 1: Algoritmos · 3 questões · 15s por questão<br />Pontos por acerto (1000) + bônus de velocidade (até +50%).</p>
+        <div class="card" style="text-align:center">
+          <p style="margin-bottom:12px">Você entrou como <strong>Você 🎓</strong>. Outros 3 colegas estão na sala (bots da demo).</p>
+          <button class="btn btn-primary" onclick="startQuiz()" style="font-size:17px">▶ Iniciar quiz</button>
+        </div>
+      </div>
+
+      <div id="game" style="display:none">
+        <div class="row" style="margin-bottom:10px">
+          <span id="progress" style="font-size:14px;color:var(--muted)"></span>
+          <span class="countdown" id="countdown">15</span>
+        </div>
+        <p id="baseText" style="font-size:13px;font-style:italic;color:var(--faint);margin-bottom:6px"></p>
+        <p id="statement" style="font-weight:700;font-size:17px;margin-bottom:14px"></p>
+        <div id="options"></div>
+        <p id="feedback" style="text-align:center;font-weight:700;margin-top:8px;min-height:24px"></p>
+      </div>
+
+      <div id="result" style="display:none">
+        <h1 class="page-title" style="text-align:center">Fim de jogo! 🏁</h1>
+        <p class="page-sub" style="text-align:center">Ranking final — no produto real, as tentativas são persistidas como nota de atividade.</p>
+        <ol class="rank" id="ranking"></ol>
+        <div style="text-align:center;margin-top:16px">
+          <button class="btn btn-secondary" onclick="location.reload()">Jogar de novo</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    professor.ai · demo estática ·
+    <a href="https://github.com/ArthurGuttilla/professor.ai" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+
+  <script>
+    // Mesma mecânica de pontuação do produto (src/modules/m5-activities/scoring.ts):
+    // acerto = 1000 * peso * (1 + 0.5 * (1 - tempo/limite)); erro = 0.
+    const QUESTIONS = [
+      {
+        baseText: "Uma padaria automatizou a produção: o forno executa uma sequência fixa de passos para assar cada fornada.",
+        statement: "Essa sequência de passos caracteriza, em computação, o conceito de:",
+        options: [
+          { key: "A", text: "Algoritmo" },
+          { key: "B", text: "Variável" },
+          { key: "C", text: "Compilador" },
+          { key: "D", text: "Banco de dados" },
+        ],
+        correct: "A",
+      },
+      {
+        statement: "Qual estrutura repete um bloco de código enquanto uma condição for verdadeira?",
+        options: [
+          { key: "A", text: "if/else" },
+          { key: "B", text: "while" },
+          { key: "C", text: "função" },
+          { key: "D", text: "constante" },
+        ],
+        correct: "B",
+      },
+      {
+        statement: "Qual o valor de x após: x = 2; x = x * 3 + 1?",
+        options: [
+          { key: "A", text: "6" },
+          { key: "B", text: "7" },
+          { key: "C", text: "8" },
+          { key: "D", text: "9" },
+        ],
+        correct: "B",
+      },
+    ];
+    const LIMIT_MS = 15000;
+    const COLORS = ["q-red", "q-blue", "q-yellow", "q-green"];
+    const BOTS = [
+      { name: "João", skill: 0.6, speed: 0.5 },
+      { name: "Pedro", skill: 0.75, speed: 0.35 },
+      { name: "Larissa", skill: 0.9, speed: 0.25 },
+    ];
+
+    let current = -1, myScore = 0, botScores = BOTS.map(() => 0);
+    let startedAt = 0, timer = null, answered = false;
+
+    const $ = (id) => document.getElementById(id);
+
+    function scoreAnswer(correct, elapsedMs) {
+      if (!correct) return 0;
+      const ratio = Math.min(Math.max(elapsedMs / LIMIT_MS, 0), 1);
+      return Math.round(1000 * (1 + 0.5 * (1 - ratio)));
+    }
+
+    function startQuiz() {
+      $("lobby").style.display = "none";
+      $("game").style.display = "block";
+      nextQuestion();
+    }
+
+    function nextQuestion() {
+      current++;
+      if (current >= QUESTIONS.length) return endGame();
+      answered = false;
+      const q = QUESTIONS[current];
+      $("progress").textContent = `Questão ${current + 1}/${QUESTIONS.length}`;
+      $("baseText").textContent = q.baseText || "";
+      $("statement").textContent = q.statement;
+      $("feedback").textContent = "";
+      const box = $("options");
+      box.innerHTML = "";
+      q.options.forEach((o, i) => {
+        const btn = document.createElement("button");
+        btn.className = `quiz-option ${COLORS[i % 4]}`;
+        btn.innerHTML = `<strong>${o.key})</strong> ${o.text}`;
+        btn.onclick = () => answer(o.key, btn);
+        btn.dataset.key = o.key;
+        box.appendChild(btn);
+      });
+      startedAt = Date.now();
+      tick();
+      timer = setInterval(tick, 200);
+    }
+
+    function tick() {
+      const remaining = Math.max(0, Math.ceil((startedAt + LIMIT_MS - Date.now()) / 1000));
+      const el = $("countdown");
+      el.textContent = remaining + "s";
+      el.style.color = remaining <= 5 ? "var(--red)" : "var(--ink)";
+      if (remaining <= 0 && !answered) answer(null, null);
+    }
+
+    function answer(key, btn) {
+      if (answered) return;
+      answered = true;
+      clearInterval(timer);
+      const q = QUESTIONS[current];
+      const elapsed = Date.now() - startedAt;
+      const correct = key === q.correct;
+      const pts = scoreAnswer(correct, elapsed);
+      myScore += pts;
+
+      // Bots respondem conforme skill/speed.
+      BOTS.forEach((b, i) => {
+        const botCorrect = Math.random() < b.skill;
+        const botElapsed = LIMIT_MS * (b.speed + Math.random() * 0.4);
+        botScores[i] += scoreAnswer(botCorrect, Math.min(botElapsed, LIMIT_MS));
+      });
+
+      // Revela: verde na correta, escurece a sua se errada.
+      document.querySelectorAll(".quiz-option").forEach((b) => {
+        b.disabled = true;
+        if (b.dataset.key === q.correct) b.classList.add("q-correct");
+        else if (b === btn) b.classList.add("q-wrong-mine");
+      });
+      $("feedback").textContent = key === null
+        ? "⏰ Tempo esgotado!"
+        : correct ? `✅ +${pts} pontos!` : "❌ Errou — 0 pontos";
+      $("feedback").style.color = correct ? "var(--green)" : "var(--red)";
+
+      setTimeout(nextQuestion, 1800);
+    }
+
+    function endGame() {
+      $("game").style.display = "none";
+      $("result").style.display = "block";
+      const all = [
+        { name: "Você 🎓", score: myScore, me: true },
+        ...BOTS.map((b, i) => ({ name: b.name, score: botScores[i], me: false })),
+      ].sort((a, b) => b.score - a.score);
+      $("ranking").innerHTML = all
+        .map((p, i) => `<li class="${p.me ? "me" : ""}"><span>${["🥇","🥈","🥉","4º"][i]} ${p.name}</span><span>${p.score}</span></li>`)
+        .join("");
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>professor.ai — Plataforma de ensino para professores universitários</title>
+  <meta name="description" content="Todos os artefatos da disciplina — plano de ensino, aulas, slides, provas, correção e tutor de IA — derivam de uma única fonte de verdade." />
+  <link rel="stylesheet" href="./assets/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <span class="logo">professor.ai</span>
+      <nav class="topnav">
+        <a href="#modulos">Módulos</a>
+        <a href="#fluxo">Fluxo</a>
+        <a href="#principios">Princípios</a>
+        <a href="./demo/index.html">Demo</a>
+        <a href="https://github.com/ArthurGuttilla/professor.ai" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <h1>Sua disciplina inteira,<br /><span class="accent">derivada de uma única fonte de verdade</span></h1>
+    <p class="lead">
+      Professores gastam 10–15h/semana em trabalho operacional que não é ensinar.
+      No professor.ai, o plano de ensino gera a bibliografia, o aula a aula, os
+      materiais, as provas, a correção e até o tutor de IA da turma — cada etapa
+      alimenta a próxima.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="./demo/index.html">Ver a demo navegável →</a>
+      <a class="btn btn-secondary" href="https://github.com/ArthurGuttilla/professor.ai" target="_blank" rel="noopener">Código no GitHub</a>
+    </div>
+  </section>
+
+  <section id="fluxo" class="section">
+    <div class="container">
+      <h2>O fluxo mestre da disciplina</h2>
+      <p class="sub">Cada artefato deriva do anterior — nada é criado "solto".</p>
+      <div class="flow">
+        <div class="flow-step"><span class="n">1</span><div><strong>Plano de Ensino (formato MEC)</strong><p>Gerado por IA ou importado de PDF/DOCX. Ementa, objetivos (Bloom), unidades, metodologia.</p></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><span class="n">2</span><div><strong>Bibliografia</strong><p>Sugerida por IA com verificação de existência — nunca inventa referência. ABNT automático.</p></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><span class="n">3</span><div><strong>Plano aula a aula</strong><p>O programa distribuído pelo calendário real do semestre, com feriados e avaliações reservadas.</p></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><span class="n">4</span><div><strong>Conteúdo, slides e materiais</strong><p>Texto-base, atividades propostas e deck no template institucional. QR code por material.</p></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><span class="n">5</span><div><strong>Atividades gamificadas</strong><p>Quiz ao vivo estilo Kahoot (código/QR, ranking em tempo real) ou assíncrono com prazos.</p></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><span class="n">6</span><div><strong>Provas ENADE + rubricas</strong><p>Situação-problema, padrão de resposta e rubrica obrigatória. Export em 3 modos de PDF.</p></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><span class="n">7</span><div><strong>Correção com gate humano</strong><p>Scan → OCR → vínculo ao aluno → correção por rubrica via IA → <strong>validação obrigatória do professor</strong>.</p></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><span class="n">8</span><div><strong>Feedback ao aluno</strong><p>Correção detalhada questão a questão via link/QR — só depois da validação.</p></div></div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-step"><span class="n">9</span><div><strong>Tutor de IA da disciplina</strong><p>Conhece todo o material publicado e a correção do próprio aluno. Cita fontes. Não faz a atividade por ele.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="modulos" class="section">
+    <div class="container">
+      <h2>Dez módulos, um produto</h2>
+      <p class="sub">Todos os requisitos P0 do PRD implementados.</p>
+      <div class="grid grid-3">
+        <div class="card"><span class="mod">M1</span><h3>Plano de Ensino</h3><p>IA gera no formato MEC com taxonomia de Bloom; import de PDF/DOCX; versionamento; export PDF/DOCX.</p></div>
+        <div class="card"><span class="mod">M2</span><h3>Bibliografia</h3><p>Sugestão verificada em catálogo aberto, formatação ABNT, vínculo às unidades do programa.</p></div>
+        <div class="card"><span class="mod">M3</span><h3>Aula a aula</h3><p>Calendário com feriados, distribuição por IA, mover/mesclar/dividir aulas, alerta de desalinhamento.</p></div>
+        <div class="card"><span class="mod">M4</span><h3>Materiais &amp; QR</h3><p>Markdown, slides com template institucional, uploads. QR code por aula e material. Rascunho/publicado.</p></div>
+        <div class="card"><span class="mod">M5</span><h3>Quiz gamificado</h3><p>Ao vivo (sala, tempo por questão, pontos por velocidade, ranking) e assíncrono. Banco de questões + IA.</p></div>
+        <div class="card"><span class="mod">M6</span><h3>Provas ENADE</h3><p>Situação-problema, discursivas com padrão de resposta, rubrica obrigatória, 3 modos de export PDF.</p></div>
+        <div class="card"><span class="mod">M7</span><h3>Correção</h3><p>Upload em lote, OCR, vínculo sugerido, correção por rubrica via IA e gate de validação do professor.</p></div>
+        <div class="card"><span class="mod">M8</span><h3>Painel do aluno</h3><p>Notas, semestre e entregas. Correção detalhada via link único + QR, só após validação.</p></div>
+        <div class="card"><span class="mod">M9</span><h3>Tutor de IA</h3><p>Indexa só material publicado + correções liberadas do próprio aluno. Cita fontes. Modo socrático.</p></div>
+        <div class="card"><span class="mod">M10</span><h3>Admin institucional</h3><p>Disciplinas, convites (máx. 2 professores + 2 assistentes), templates, multi-tenant.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="principios" class="section">
+    <div class="container">
+      <h2>Princípios inegociáveis</h2>
+      <p class="sub">Garantidos pela arquitetura, não por boas intenções.</p>
+      <div class="grid grid-3">
+        <div class="card"><h3>🧑‍🏫 Humano no loop</h3><p>Nota e feedback de IA nunca chegam ao aluno sem validação explícita do professor — modelado no domínio, com trilha de auditoria IA vs. aprovado.</p></div>
+        <div class="card"><h3>📚 Anti-alucinação</h3><p>Referência bibliográfica passa por verificação de existência; o tutor cita a fonte de cada afirmação e só indexa material publicado.</p></div>
+        <div class="card"><h3>🔒 Isolamento</h3><p>Multi-tenant por instituição; correções escopadas ao próprio aluno na camada de recuperação de dados, nunca expostas a colegas.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container narrow" style="text-align:center">
+      <h2>Veja funcionando</h2>
+      <p class="sub">Demo navegável com dados de exemplo — direto no navegador, sem instalar nada.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="./demo/index.html">Abrir a demo →</a>
+        <a class="btn btn-secondary" href="./demo/quiz.html">Jogar o quiz ao vivo 🎮</a>
+      </div>
+      <p style="margin-top:20px; font-size:13px; color:var(--faint)">
+        Esta página é estática (GitHub Pages). A plataforma completa — banco de dados,
+        login, geração por IA, correção e quiz em tempo real — roda com Node + PostgreSQL;
+        instruções no <a href="https://github.com/ArthurGuttilla/professor.ai#setup-local">README</a>.
+      </p>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    professor.ai — plataforma de ensino para professores universitários ·
+    <a href="https://github.com/ArthurGuttilla/professor.ai" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+</body>
+</html>

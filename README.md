@@ -38,6 +38,23 @@ fonte de verdade: o plano de ensino**.
 Next.js 15 (App Router) · TypeScript · PostgreSQL + Prisma · Tailwind CSS ·
 Anthropic SDK (geração estruturada validada com Zod).
 
+## Site + demo no GitHub Pages
+
+O diretório [`site/`](site/) contém um **site estático** (landing page + demo
+navegável com dados de exemplo, quiz jogável e tutor com respostas de
+demonstração) publicado via GitHub Pages:
+
+1. No repositório: **Settings → Pages → Source: "GitHub Actions"** (uma vez).
+2. O workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml)
+   publica automaticamente a cada push em `main` que altere `site/`
+   (ou manualmente via *Run workflow*).
+3. URL: `https://<usuario>.github.io/professor.ai/`.
+
+> **Importante:** GitHub Pages serve apenas arquivos estáticos. A plataforma
+> completa (login, banco, geração por IA, correção, quiz em tempo real) é o app
+> Next.js deste repo e precisa de **servidor Node + PostgreSQL** — rode local
+> (abaixo) ou hospede em Vercel/Railway/Render/VPS.
+
 ## Setup local
 
 Pré-requisitos: Node 20+ e PostgreSQL.

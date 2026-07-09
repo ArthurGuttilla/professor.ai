@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo · Tutor de IA — professor.ai</title>
+  <link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body>
+  <div class="demo-banner">
+    🔍 Demo com respostas pré-gravadas — no produto real, o tutor responde com IA sobre TODO o material publicado e a correção do aluno logado.
+  </div>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="logo" href="../index.html">professor.ai</a>
+      <nav class="topnav">
+        <a href="./index.html">Visão geral</a>
+        <a href="./plano.html">Plano de ensino</a>
+        <a href="./aulas.html">Aula a aula</a>
+        <a href="./correcao.html">Correção</a>
+        <a href="./aluno.html">Aluno</a>
+        <a href="./quiz.html">Quiz ao vivo</a>
+        <a class="active" href="./tutor.html">Tutor</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container page" style="max-width:720px">
+    <h1 class="page-title">Tutor da disciplina</h1>
+    <p class="page-sub">
+      Conhece o material publicado, os prazos e as correções liberadas de <strong>Maria</strong> (aluna logada).
+      Cita as fontes e não faz atividades pelo aluno.
+    </p>
+
+    <div class="chat" id="chat">
+      <div class="msg msg-tutor">
+        Oi, Maria! 👋 Sou o tutor de Introdução à Programação. Posso explicar o conteúdo das aulas,
+        detalhar sua correção da Prova 1 ou informar prazos. Experimente uma das perguntas abaixo.
+      </div>
+    </div>
+
+    <div class="suggestions" id="suggestions">
+      <button onclick="ask('conceito')">O que é um algoritmo? Me dê um exemplo novo</button>
+      <button onclick="ask('correcao')">Por que perdi 0.5 ponto na Prova 1?</button>
+      <button onclick="ask('prazos')">Quais são as próximas entregas e os pesos?</button>
+      <button onclick="ask('atividade')">Resolve a atividade 1 da aula pra mim?</button>
+    </div>
+
+    <div class="chat-input">
+      <input id="freeInput" placeholder="Na demo, use as perguntas sugeridas acima ☝️" disabled />
+      <span class="btn btn-primary" style="opacity:0.5">Enviar</span>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    professor.ai · demo estática ·
+    <a href="https://github.com/ArthurGuttilla/professor.ai" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+
+  <script>
+    const ANSWERS = {
+      conceito: {
+        q: "O que é um algoritmo? Me dê um exemplo novo",
+        a: "Um algoritmo é uma sequência <strong>finita e não ambígua</strong> de passos para resolver um problema. Além da receita de bolo que vimos em aula, pense num caixa eletrônico: entrada (cartão + senha + valor), processamento (validar saldo, separar cédulas) e saída (dinheiro + comprovante). Note as 4 propriedades da aula: finitude, definição precisa, entradas/saídas e efetividade.",
+        cites: ["Aula 1 — texto", "Aula 1 — slides"],
+      },
+      correcao: {
+        q: "Por que perdi 0.5 ponto na Prova 1?",
+        a: "Você perdeu 0.5 no critério <strong>“Clareza e coesão”</strong> da questão 3. Sua resposta estava correta no conteúdo (identificou a duplicação e citou três benefícios!), mas usou linguagem informal, sem terminologia técnica. A professora sugeriu usar termos como “manutenibilidade” e “ponto único de mudança”. Nos outros critérios você fez pontuação máxima: objetivas 6/6, compreensão 1.5/1.5 e benefícios 2/2.",
+        cites: ["Sua correção — Prova 1"],
+      },
+      prazos: {
+        q: "Quais são as próximas entregas e os pesos?",
+        a: "📅 Próxima entrega: <strong>Quiz — Aula 1: Algoritmos</strong>, até 20/08, com 2 tentativas. A Prova 2 está reservada para 09/09. Pesos da disciplina: duas provas (60%), atividades e quizzes (25%) e projeto final (15%), com média mínima 6,0.",
+        cites: ["Atividades e prazos", "Plano de Ensino", "Calendário de aulas"],
+      },
+      atividade: {
+        q: "Resolve a atividade 1 da aula pra mim?",
+        a: "Não posso fazer a atividade por você 🙂 — mas posso te guiar! A atividade pede o algoritmo para trocar um pneu. Comece se perguntando: quais são as <strong>entradas</strong> (ferramentas, estepe)? Qual o primeiro passo que precisa vir antes de todos (segurança!)? Tente escrever os 3 primeiros passos e me mostre — eu comento.",
+        cites: ["Aula 1 — texto"],
+      },
+    };
+    const asked = new Set();
+
+    function ask(key) {
+      if (asked.has(key)) return;
+      asked.add(key);
+      const item = ANSWERS[key];
+      const chat = document.getElementById("chat");
+
+      const q = document.createElement("div");
+      q.className = "msg msg-student";
+      q.textContent = item.q;
+      chat.appendChild(q);
+
+      const typing = document.createElement("div");
+      typing.className = "msg msg-tutor";
+      typing.innerHTML = "<em style='color:var(--faint)'>digitando…</em>";
+      chat.appendChild(typing);
+      typing.scrollIntoView({ behavior: "smooth" });
+
+      setTimeout(() => {
+        typing.innerHTML =
+          item.a +
+          "<br />" +
+          item.cites.map((c) => `<span class="cite">${c}</span>`).join("");
+        typing.scrollIntoView({ behavior: "smooth" });
+      }, 900);
+    }
+  </script>
+</body>
+</html>

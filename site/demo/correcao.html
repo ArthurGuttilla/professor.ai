@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo · Correção com gate — professor.ai</title>
+  <link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body>
+  <div class="demo-banner">
+    🔍 Demo estática — no produto real, o scan passa por OCR, a IA corrige pela rubrica e SÓ o professor valida e libera.
+  </div>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="logo" href="../index.html">professor.ai</a>
+      <nav class="topnav">
+        <a href="./index.html">Visão geral</a>
+        <a href="./plano.html">Plano de ensino</a>
+        <a href="./aulas.html">Aula a aula</a>
+        <a class="active" href="./correcao.html">Correção</a>
+        <a href="./aluno.html">Aluno</a>
+        <a href="./quiz.html">Quiz ao vivo</a>
+        <a href="./tutor.html">Tutor</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container page">
+    <h1 class="page-title">Correção — Prova 1 (formato ENADE)</h1>
+    <p class="page-sub">Fila: pendente vínculo → corrigida (IA) → validada (professor) → liberada. <strong>Nenhuma nota chega ao aluno sem validação.</strong></p>
+
+    <div class="two-col">
+      <div class="stack">
+        <div class="card">
+          <h3>Fila de correção</h3>
+          <table class="tbl">
+            <thead><tr><th>Aluno</th><th>Status</th><th>Vínculo</th><th class="num">IA</th><th class="num">Final</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>Maria Santos <span style="color:var(--faint);font-size:12px">mat. 2026002</span></td>
+                <td><span class="badge b-green">Liberada</span></td>
+                <td><span class="badge b-green">Confirmado</span></td>
+                <td class="num" style="color:var(--faint)">9.0</td>
+                <td class="num"><strong>9.5</strong></td>
+              </tr>
+              <tr>
+                <td>João Lima <span style="color:var(--faint);font-size:12px">mat. 2026001</span></td>
+                <td><span class="badge b-purple">Corrigida (IA)</span></td>
+                <td><span class="badge b-yellow">Vínculo sugerido</span></td>
+                <td class="num" style="color:var(--faint)">4.5</td>
+                <td class="num">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="row">
+            <h3>Validação — João Lima <span class="badge b-purple">Corrigida (IA)</span></h3>
+          </div>
+          <p style="margin:4px 0 12px">Cabeçalho lido pelo OCR: “Joao Lima 2026001” → vínculo sugerido ao aluno correto, aguardando sua confirmação.</p>
+
+          <table class="tbl">
+            <thead><tr><th></th><th>Questão / resposta do aluno</th><th class="num">IA sugeriu</th><th class="num">Sua nota</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="badge b-green">✓</span></td>
+                <td>Q1 (objetiva, 3 pts) — marcou <strong>A</strong> · gabarito A</td>
+                <td class="num">3.0</td><td class="num">3.0</td>
+              </tr>
+              <tr>
+                <td><span class="badge b-red">✗</span></td>
+                <td>Q2 (objetiva, 3 pts) — marcou <strong>C</strong> · gabarito B</td>
+                <td class="num">0.0</td><td class="num">0.0</td>
+              </tr>
+              <tr>
+                <td><span class="badge b-yellow">~</span></td>
+                <td>
+                  Q3 (discursiva, 4 pts) — “Função serve para organizar o código.”
+                  <br /><span style="color:var(--faint);font-size:12px">IA: “Resposta genérica: não identifica a duplicação nem cita benefícios concretos.”</span>
+                </td>
+                <td class="num">1.5</td><td class="num"><input value="1.5" style="width:52px;text-align:right;border:1px solid var(--line);border-radius:6px;padding:2px 6px" /></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top:16px">Notas por critério (rubrica)</h3>
+          <table class="tbl">
+            <thead><tr><th>Critério</th><th>Justificativa da IA</th><th class="num">IA</th><th class="num">Máx</th></tr></thead>
+            <tbody>
+              <tr><td>Objetivas — acerto</td><td>Uma objetiva correta de duas.</td><td class="num">3.0</td><td class="num">6</td></tr>
+              <tr><td>Compreensão do problema (Q3)</td><td>Menciona organização, mas não a duplicação.</td><td class="num">0.5</td><td class="num">1.5</td></tr>
+              <tr><td>Benefícios da modularização (Q3)</td><td>Nenhum benefício concreto citado.</td><td class="num">0.5</td><td class="num">2</td></tr>
+              <tr><td>Clareza e coesão (Q3)</td><td>Texto curto porém claro.</td><td class="num">0.5</td><td class="num">0.5</td></tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top:16px">Feedback ao aluno (pré-preenchido pela IA — edição livre)</h3>
+          <p class="note" style="margin-top:8px">João, revise a Unidade 2 (laços) e o conceito de modularização: sua resposta da questão 3 não abordou o problema da duplicação de código.</p>
+
+          <div class="row" style="margin-top:14px">
+            <label style="font-size:14px;color:var(--muted)"><input type="checkbox" checked disabled /> Liberar ao aluno imediatamente</label>
+            <span class="btn btn-primary" title="No produto real, esta ação é exclusiva do papel PROFESSOR">Validar correção</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="card">
+          <h3>O gate, passo a passo</h3>
+          <ul class="klist">
+            <li>1. <strong>Upload em lote</strong> — scan PDF, foto ou arquivo digital</li>
+            <li>2. <strong>OCR</strong> lê o cabeçalho e transcreve as respostas</li>
+            <li>3. <strong>Vínculo sugerido</strong> (matrícula &gt; nome) + confirmação humana</li>
+            <li>4. Objetivas: <strong>correção instantânea</strong> contra o gabarito</li>
+            <li>5. Discursivas: <strong>IA aplica a rubrica</strong> — nota por critério + justificativa</li>
+            <li>6. <strong>Professor valida</strong> (individual ou em lote), com edição livre</li>
+            <li>7. Só então o aluno recebe link/QR com a correção</li>
+          </ul>
+        </div>
+        <div class="note note-green">
+          <strong>Trilha de auditoria:</strong> na prova da Maria, a IA sugeriu 9.0 e a professora
+          ajustou para 9.5 (+0.5 no critério “Benefícios da modularização”). O diff IA × professor
+          fica registrado por submissão.
+        </div>
+        <div class="card">
+          <h3>Export da prova</h3>
+          <p>Três modos de PDF: só a prova · prova com gabarito na última página · dois PDFs separados (prova + gabarito com padrão de resposta e rubrica).</p>
+        </div>
+        <div class="card">
+          <h3>Papéis</h3>
+          <p><span class="badge b-purple">Assistente</span> faz triagem e vínculo, mas <strong>não valida</strong> notas.<br />
+          <span class="badge b-blue">Professor</span> é o único que valida e libera.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    professor.ai · demo estática ·
+    <a href="https://github.com/ArthurGuttilla/professor.ai" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+</body>
+</html>

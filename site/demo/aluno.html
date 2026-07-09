@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo · Área do aluno — professor.ai</title>
+  <link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body>
+  <div class="demo-banner">
+    🔍 Demo estática — no produto real, o aluno entra com o e-mail institucional e só vê notas LIBERADAS pelo professor.
+  </div>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="logo" href="../index.html">professor.ai</a>
+      <nav class="topnav">
+        <a href="./index.html">Visão geral</a>
+        <a href="./plano.html">Plano de ensino</a>
+        <a href="./aulas.html">Aula a aula</a>
+        <a href="./correcao.html">Correção</a>
+        <a class="active" href="./aluno.html">Aluno</a>
+        <a href="./quiz.html">Quiz ao vivo</a>
+        <a href="./tutor.html">Tutor</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container page" style="max-width:720px">
+    <h1 class="page-title">Olá, Maria Santos</h1>
+    <p class="page-sub">Universidade Demo · seu semestre — visão mobile-first do aluno (acesso via QR/link).</p>
+
+    <div class="card" style="background:var(--blue-bg);text-align:center;border-color:#bfdbfe">
+      <p style="font-size:13px">Prova 1 — Unidades 1 e 2 · <strong>sua nota</strong></p>
+      <p style="font-size:42px;font-weight:800;color:var(--brand)">9.5<span style="font-size:16px;color:var(--faint);font-weight:400">/10</span></p>
+      <p style="font-size:12px;color:var(--faint)">liberada pela Profa. Ana em 08/07/2026</p>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h3>Feedback do professor</h3>
+      <p>Parabéns, Maria! Você acertou todas as objetivas e sua resposta discursiva demonstra
+      compreensão real do valor da modularização. Para a próxima: use terminologia mais técnica
+      (ex.: “manutenibilidade”, “ponto único de mudança”) — foi o único critério em que perdeu pontos.</p>
+    </div>
+
+    <h2 style="font-size:18px;margin:22px 0 10px">Questão a questão</h2>
+    <div class="stack">
+      <div class="card">
+        <div class="row"><span style="font-size:12px;color:var(--faint);font-weight:700">QUESTÃO 1</span><span class="badge b-green">3/3 pts</span></div>
+        <p style="font-size:13px;font-style:italic;color:var(--faint);margin-top:6px">Uma padaria automatizou a produção: o forno executa uma sequência fixa de passos para assar cada fornada.</p>
+        <p style="font-weight:600;margin-top:4px">Essa sequência de passos caracteriza, em computação, o conceito de:</p>
+        <p style="margin-top:8px;background:var(--bg);border-radius:8px;padding:8px 12px">Sua resposta: <strong>A) Algoritmo</strong> ✓</p>
+      </div>
+      <div class="card">
+        <div class="row"><span style="font-size:12px;color:var(--faint);font-weight:700">QUESTÃO 2</span><span class="badge b-green">3/3 pts</span></div>
+        <p style="font-weight:600;margin-top:6px">Qual estrutura repete um bloco de código enquanto uma condição for verdadeira?</p>
+        <p style="margin-top:8px;background:var(--bg);border-radius:8px;padding:8px 12px">Sua resposta: <strong>B) while</strong> ✓</p>
+      </div>
+      <div class="card">
+        <div class="row"><span style="font-size:12px;color:var(--faint);font-weight:700">QUESTÃO 3 · discursiva</span><span class="badge b-yellow">3.5/4 pts</span></div>
+        <p style="font-weight:600;margin-top:6px">Explique por que a modularização com funções melhoraria esse código, citando pelo menos dois benefícios concretos.</p>
+        <p style="margin-top:8px;background:var(--bg);border-radius:8px;padding:8px 12px;font-size:14px">
+          Sua resposta: “Repetir código é ruim porque quando precisar mudar tem que mudar em 4 lugares.
+          Com função muda em um lugar só. Também fica mais fácil de ler e dá pra testar a função sozinha.”
+        </p>
+        <p style="margin-top:8px;background:var(--green-bg);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--green)">
+          <strong>Resposta esperada:</strong> funções eliminam duplicação (único ponto de manutenção),
+          dão nome/abstração ao comportamento, facilitam testes isolados e reuso.
+        </p>
+        <p style="margin-top:8px;font-size:13px;color:var(--muted)"><strong>Comentário:</strong> Excelente resposta — identifica o problema e cita três benefícios corretos. Faltou apenas mencionar reuso.</p>
+      </div>
+
+      <div class="card">
+        <h3>Pontos por critério (rubrica)</h3>
+        <table class="tbl">
+          <tbody>
+            <tr><td>Objetivas — acerto</td><td class="num">6/6</td></tr>
+            <tr><td>Compreensão do problema</td><td class="num">1.5/1.5</td></tr>
+            <tr><td>Benefícios da modularização</td><td class="num">2/2</td></tr>
+            <tr><td>Clareza e coesão <span style="color:var(--faint);font-size:12px">(texto informal, sem terminologia técnica)</span></td><td class="num">0/0.5</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note note-blue">
+        <strong>Gate herdado do M7:</strong> esta página só existe porque a professora validou e
+        liberou a correção. A prova do João, corrigida pela IA mas ainda não validada, retorna 404
+        para ele — e cada aluno só acessa a própria correção.
+      </div>
+
+      <a class="btn btn-primary" href="./tutor.html" style="justify-content:center">💬 Perguntar ao tutor: “por que perdi 0.5 na clareza?”</a>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    professor.ai · demo estática ·
+    <a href="https://github.com/ArthurGuttilla/professor.ai" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+</body>
+</html>

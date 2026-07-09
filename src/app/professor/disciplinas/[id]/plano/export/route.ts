@@ -19,7 +19,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   if (!plan) return NextResponse.json({ error: "Plano não encontrado" }, { status: 404 });
 
   const format = req.nextUrl.searchParams.get("format") ?? "pdf";
-  const filenameBase = `plano-de-ensino-${discipline.name.toLowerCase().replace(/\s+/g, "-")}`;
+  // Headers HTTP são ByteString: filename precisa ser ASCII-safe.
+  const safeName = discipline.name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const filenameBase = `plano-de-ensino-${safeName || "disciplina"}`;
 
   const sections = {
     identificacao: `Disciplina: ${discipline.name}\nCurso: ${discipline.course}\nPeríodo: ${discipline.term} · Carga horária: ${discipline.workloadHours}h\nInstituição: ${user.institution.name}`,

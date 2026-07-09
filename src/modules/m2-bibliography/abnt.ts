@@ -24,6 +24,6 @@ export function formatAbnt(fields: BibFields): string {
   parts.push(`${fields.title.replace(/\.$/, "")}.`);
   if (fields.edition) parts.push(`${fields.edition.replace(/\.$/, "")}.`);
   const pubYear = [fields.publisher, fields.year ?? "s.d."].filter(Boolean).join(", ");
-  if (pubYear) parts.push(`${pubYear}.`);
+  if (pubYear) parts.push(`${pubYear.replace(/\.$/, "")}.`);
   return parts.join(" ");
 }

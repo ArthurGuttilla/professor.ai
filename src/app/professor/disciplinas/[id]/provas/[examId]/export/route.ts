@@ -94,10 +94,17 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string;
 
   const bytes = await pdf.toBytes();
   const suffix = mode === "gabarito" ? "-gabarito" : mode === "completo" ? "-com-gabarito" : "";
+  // Headers HTTP são ByteString: filename precisa ser ASCII-safe.
+  const safeName = exam.title
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
   return new NextResponse(Buffer.from(bytes), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${exam.title.toLowerCase().replace(/\s+/g, "-")}${suffix}.pdf"`,
+      "Content-Disposition": `inline; filename="${safeName || "prova"}${suffix}.pdf"`,
     },
   });
 }

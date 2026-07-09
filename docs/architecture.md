@@ -116,13 +116,22 @@ Todas as chamadas de modelo passam por um wrapper único. Princípios:
   disciplina via a tabela de vínculo `Membership`, com os limites hard do PRD
   (≤2 professores, ≤2 assistentes por disciplina) validados no convite.
 
-## 7. Estado atual do scaffold
+## 7. Estado atual
 
-Este commit entrega **estrutura + documentação**, não features. Presente:
-- Configuração de build (Next.js, TS, Tailwind, ESLint/Prettier).
-- Esboço do schema Prisma cobrindo a cadeia de derivação e RBAC (`prisma/schema.prisma`).
-- Wrapper de IA (`src/lib/ai`) e Prisma client como pontos de extensão.
-- Landing page mínima e placeholders por módulo (`src/modules/*/README.md`).
+**Todos os P0 dos módulos M1–M10 estão implementados** (ver `docs/roadmap.md`).
+Decisões v1 que diferem da arquitetura-alvo (dívidas conscientes):
 
-Próximo passo (Fase 1): implementar M1 (Plano de Ensino) end-to-end como primeira
-fatia vertical. Ver `docs/roadmap.md`.
+- **Quiz ao vivo em memória + SSE** (`src/modules/m5-activities/live-store.ts`):
+  single-instance; contrato de eventos definido, motor gerenciado fica para a
+  decisão build vs. buy (Q4 do PRD).
+- **OCR/correção inline na request** (não em worker/fila). Funciona para lotes
+  de piloto; extração para worker está reservada em §3.
+- **Storage em disco local** (`src/lib/storage.ts`, `STORAGE_DIR`): interface
+  mínima pensada para trocar por S3 sem tocar nos módulos.
+- **Convite por link copiado** (sem SMTP): o admin copia o link do convite.
+- **Auth própria com sessões em banco** (cookies httpOnly): simples e auditável;
+  SSO institucional (M10 P1) entra por cima.
+
+Verificação: testes unitários da lógica pura (`npm test` — ABNT, calendário,
+pontuação, slides, RBAC), typecheck/lint/build limpos, e fluxos exercitados
+end-to-end com o seed (`npm run db:seed`).

@@ -1,0 +1,253 @@
+// professor.ai — esboço do modelo de dados.
+// Acompanha docs/data-model.md. Implementa um subconjunto suficiente para
+// ancorar a Fase 1 (M1-M4, M10). Entidades de Fase 2/3 estão esboçadas ao final.
+//
+// Convenção multi-tenant: toda entidade de negócio referencia institutionId.
+// Ver docs/adr/0002-multitenancy-and-rbac.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums de domínio ────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  PROFESSOR
+  ASSISTANT
+  STUDENT
+}
+
+enum PublishState {
+  DRAFT
+  PUBLISHED
+}
+
+// Gate humano-no-loop: saída de IA para o aluno nasce PENDING_REVIEW.
+enum ReviewState {
+  PENDING_REVIEW
+  APPROVED
+  RELEASED
+}
+
+enum BibKind {
+  BASIC
+  COMPLEMENTARY
+}
+
+// ─── Tenancy & pessoas ───────────────────────────────────────────
+
+model Institution {
+  id          String       @id @default(cuid())
+  name        String
+  createdAt   DateTime     @default(now())
+  users       User[]
+  disciplines Discipline[]
+  students    Student[]
+}
+
+model User {
+  id            String       @id @default(cuid())
+  institutionId String
+  institution   Institution  @relation(fields: [institutionId], references: [id])
+  email         String
+  name          String?
+  isAdmin       Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  memberships   Membership[]
+
+  @@unique([institutionId, email])
+}
+
+// Aluno: autenticação leve por e-mail institucional (M8), separado de User.
+model Student {
+  id            String       @id @default(cuid())
+  institutionId String
+  institution   Institution  @relation(fields: [institutionId], references: [id])
+  email         String
+  name          String?
+  enrollments   Enrollment[]
+
+  @@unique([institutionId, email])
+}
+
+// ─── Disciplina & vínculos ───────────────────────────────────────
+
+model Discipline {
+  id            String        @id @default(cuid())
+  institutionId String
+  institution   Institution   @relation(fields: [institutionId], references: [id])
+  name          String
+  course        String
+  term          String // período/semestre, ex.: "2026.2"
+  workloadHours Int
+  createdAt     DateTime      @default(now())
+  memberships   Membership[]
+  enrollments   Enrollment[]
+  teachingPlan  TeachingPlan?
+
+  @@index([institutionId])
+}
+
+// Papel escopado por disciplina. Limite hard ≤2 PROFESSOR e ≤2 ASSISTANT
+// é validado na camada de serviço no convite (não expressável em schema puro).
+model Membership {
+  id           String     @id @default(cuid())
+  disciplineId String
+  discipline   Discipline @relation(fields: [disciplineId], references: [id])
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  role         Role // PROFESSOR | ASSISTANT
+  acceptedAt   DateTime?
+
+  @@unique([disciplineId, userId])
+  @@index([disciplineId, role])
+}
+
+model Enrollment {
+  id           String     @id @default(cuid())
+  disciplineId String
+  discipline   Discipline @relation(fields: [disciplineId], references: [id])
+  studentId    String
+  student      Student    @relation(fields: [studentId], references: [id])
+
+  @@unique([disciplineId, studentId])
+}
+
+// ─── M1: Plano de Ensino (fonte de verdade, versionado) ──────────
+
+model TeachingPlan {
+  id           String  @id @default(cuid())
+  disciplineId String  @unique
+  discipline   Discipline @relation(fields: [disciplineId], references: [id])
+  version      Int     @default(1)
+
+  // Campos MEC (ver PRD M1). Texto rico serializado como markdown.
+  ementa            String @default("")
+  objetivosGerais   String @default("")
+  metodologia       String @default("")
+  criteriosAvaliacao String @default("")
+
+  programUnits       ProgramUnit[]
+  learningObjectives LearningObjective[]
+  bibliography       BibliographyItem[]
+  lessonPlan         LessonPlan?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProgramUnit {
+  id             String       @id @default(cuid())
+  teachingPlanId String
+  teachingPlan   TeachingPlan @relation(fields: [teachingPlanId], references: [id])
+  order          Int
+  title          String
+  content        String       @default("") // conteúdo programático da unidade
+}
+
+model LearningObjective {
+  id             String       @id @default(cuid())
+  teachingPlanId String
+  teachingPlan   TeachingPlan @relation(fields: [teachingPlanId], references: [id])
+  bloomLevel     String // taxonomia de Bloom
+  description    String
+  isSpecific     Boolean      @default(true) // false = objetivo geral
+}
+
+// ─── M2: Bibliografia (anti-alucinação: verificável) ─────────────
+
+model BibliographyItem {
+  id             String       @id @default(cuid())
+  teachingPlanId String
+  teachingPlan   TeachingPlan @relation(fields: [teachingPlanId], references: [id])
+  kind           BibKind
+  // Formatação ABNT derivada dos campos abaixo.
+  authors        String
+  title          String
+  publisher      String?
+  year           Int?
+  isbn           String?
+  abntFormatted  String?
+  // Proveniência da verificação de existência (obrigatória p/ sugestão de IA).
+  verified       Boolean      @default(false)
+  provenance     String?
+  order          Int          @default(0)
+}
+
+// ─── M3: Plano aula a aula ───────────────────────────────────────
+
+model LessonPlan {
+  id             String       @id @default(cuid())
+  teachingPlanId String       @unique
+  teachingPlan   TeachingPlan @relation(fields: [teachingPlanId], references: [id])
+  startDate      DateTime?
+  endDate        DateTime?
+  lessons        Lesson[]
+}
+
+model Lesson {
+  id           String       @id @default(cuid())
+  lessonPlanId String
+  lessonPlan   LessonPlan   @relation(fields: [lessonPlanId], references: [id])
+  number       Int
+  date         DateTime?
+  theme        String
+  objectives   String       @default("")
+  isAssessment Boolean      @default(false) // aula reservada p/ avaliação
+
+  content   LessonContent?
+  slideDeck SlideDeck?
+  materials Material[]
+
+  @@unique([lessonPlanId, number])
+}
+
+// ─── M4: Conteúdo, slides e materiais por aula ───────────────────
+
+model LessonContent {
+  id       String       @id @default(cuid())
+  lessonId String       @unique
+  lesson   Lesson       @relation(fields: [lessonId], references: [id])
+  markdown String       @default("")
+  status   PublishState @default(DRAFT)
+}
+
+model SlideDeck {
+  id       String       @id @default(cuid())
+  lessonId String       @unique
+  lesson   Lesson       @relation(fields: [lessonId], references: [id])
+  // Estrutura dos slides serializada (JSON) ou referência ao arquivo publicado.
+  data     Json?
+  status   PublishState @default(DRAFT)
+}
+
+model Material {
+  id        String       @id @default(cuid())
+  lessonId  String
+  lesson    Lesson       @relation(fields: [lessonId], references: [id])
+  name      String
+  // URL do arquivo no storage (PDF/PPTX/imagem). Alimenta IA/tutor.
+  fileUrl   String?
+  status    PublishState @default(DRAFT)
+  // QR code único por material aponta para a versão publicada.
+  qrSlug    String?      @unique
+  createdAt DateTime     @default(now())
+}
+
+// ─── Fase 2/3 (esboço — a detalhar quando implementar) ───────────
+//
+// model Exam { ... escopo disciplina|unidades; kind ENADE/tradicional/atividade }
+// model Rubric { ... }            // critério, descrição, pontos (obrigatória)
+// model RubricCriterion { ... }
+// model Question { ... }          // MC / V-F / dissertativa; QuestionBank
+// model Activity { ... }          // quiz gamificado | assíncrono
+// model Submission { ... }        // scan↔aluno; LinkState UNLINKED/SUGGESTED/CONFIRMED
+// model CriterionScore { ... }    // aiScore vs finalScore (trilha de auditoria)
+// model Feedback { ... }          // ReviewState; visível ao aluno só em RELEASED
+// model TutorIndexItem { ... }    // só material publicado/liberado; proveniência

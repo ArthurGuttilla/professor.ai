@@ -20,7 +20,8 @@ export async function studentLoginAction(_prev: { error?: string } | null, formD
   }
 
   await createStudentSession(student.id);
-  redirect("/aluno");
+  const next = String(formData.get("next") ?? "");
+  redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/aluno");
 }
 
 export async function studentLogoutAction() {

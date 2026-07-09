@@ -1,12 +1,22 @@
 "use client";
 
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { studentLoginAction } from "./actions";
 import { Button, Card, ErrorBanner, Input, Label } from "@/components/ui";
 
 export default function StudentLoginPage() {
+  return (
+    <Suspense>
+      <StudentLoginForm />
+    </Suspense>
+  );
+}
+
+function StudentLoginForm() {
   const [state, action, pending] = useActionState(studentLoginAction, null);
+  const next = useSearchParams().get("next") ?? "";
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
@@ -15,6 +25,7 @@ export default function StudentLoginPage() {
       <Card>
         <form action={action} className="space-y-4">
           {state?.error ? <ErrorBanner>{state.error}</ErrorBanner> : null}
+          <input type="hidden" name="next" value={next} />
           <div>
             <Label>E-mail institucional</Label>
             <Input name="email" type="email" required placeholder="voce@aluno.instituicao.edu" />

@@ -1,6 +1,7 @@
 # Publica o site estático (site/) no GitHub Pages.
 #
-# Para ativar: Settings → Pages → Source: "GitHub Actions".
+# O passo configure-pages usa "enablement: true" para habilitar o Pages
+# automaticamente (Source: GitHub Actions) — sem configuração manual.
 # O site é HTML/CSS/JS puro — não há etapa de build.
 #
 # Nota: o Pages serve APENAS este site estático (landing + demo).
@@ -11,7 +12,7 @@ name: Deploy site to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, claude/university-teaching-platform-do4qwn]
     paths:
       - "site/**"
       - ".github/workflows/pages.yml"
@@ -35,6 +36,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
